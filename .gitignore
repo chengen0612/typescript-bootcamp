@@ -4,6 +4,7 @@ node_modules
 # Development
 # Ignore results of the compilation
 *.js
+*.js.map
 
 # Environment
 .vscode
