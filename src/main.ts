@@ -1,15 +1,27 @@
-function add(n1: number, n2: number, shouldPrint: boolean, prefix: string) {
-  const sum = n1 + n2;
+class Department {
+  private employees: string[];
 
-  if (shouldPrint) {
-    return console.log(prefix + sum);
+  constructor(readonly id: string, public name: string) {
+    this.employees = [];
   }
-  return sum;
+
+  printDescription(this: Department) {
+    console.log(`Department (${this.id}): ${this.name}`);
+  }
+
+  addEmployee(name: string) {
+    this.employees.push(name);
+  }
+
+  printEmployeesList() {
+    console.log(this.employees);
+  }
 }
 
-const number1 = 2;
-const number2 = 3.5;
-const shouldPrint = true;
-const prefix = "Result: ";
+const accounting = new Department("d1", "Accounting");
 
-add(number1, number2, shouldPrint, prefix);
+accounting.addEmployee("Amy");
+accounting.addEmployee("Tim");
+
+accounting.printDescription();
+accounting.printEmployeesList();
