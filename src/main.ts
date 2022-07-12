@@ -18,10 +18,23 @@ class Department {
   }
 }
 
-const accounting = new Department("d1", "Accounting");
+class ITDepartment extends Department {
+  constructor(id: string, name: string, private languages: string[]) {
+    super(id, name);
 
-accounting.addEmployee("Amy");
-accounting.addEmployee("Tim");
+    this.languages = languages;
+  }
 
-accounting.printDescription();
-accounting.printEmployeesList();
+  printLanguages() {
+    console.log(`Prefer languages list: ${this.languages}`);
+  }
+}
+
+const it = new ITDepartment("d1", "IT", ["JavaScript, GoLang"]);
+
+it.addEmployee("Amy");
+it.addEmployee("Tim");
+
+it.printDescription();
+it.printEmployeesList();
+it.printLanguages();
