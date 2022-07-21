@@ -6,7 +6,7 @@ enum Rules {
 
 interface FormSchemaValidator {
   [formName: string]: {
-    [fieldName: string]: string[];
+    [fieldName: string]: Rules[];
   };
 }
 
@@ -14,14 +14,20 @@ interface FormSchemaValidator {
 function Require(target: object, propertyName: string) {
   formValidators[target.constructor.name] = {
     ...formValidators[target.constructor.name],
-    [propertyName]: [Rules.Required],
+    [propertyName]: [
+      ...(formValidators[target.constructor.name]?.[propertyName] ?? []),
+      Rules.Required,
+    ],
   };
 }
 
 function Positive(target: object, propertyName: string) {
   formValidators[target.constructor.name] = {
     ...formValidators[target.constructor.name],
-    [propertyName]: [Rules.Positive],
+    [propertyName]: [
+      ...(formValidators[target.constructor.name]?.[propertyName] ?? []),
+      Rules.Positive,
+    ],
   };
 }
 
@@ -46,22 +52,26 @@ function validate(target: any) {
   const validator = formValidators[target.constructor.name];
 
   Object.entries(validator).forEach(([propertyName, rules]) => {
-    switch (rules[0]) {
-      case Rules.Required:
-        if (!(target[propertyName].trim().length > 0)) {
-          throw new Error(`Field "${propertyName}" cannot be empty`);
-        }
-        break;
+    rules.forEach((rule) => {
+      const inputValue = target[propertyName];
 
-      case Rules.Positive:
-        if (!(target[propertyName] > 0)) {
-          throw new Error(`Field "${propertyName}" must be positive number`);
-        }
-        break;
+      switch (rule) {
+        case Rules.Required:
+          if (!(inputValue.trim().length > 0)) {
+            throw new Error(`Field "${propertyName}" cannot be empty`);
+          }
+          break;
 
-      default:
-        throw new Error(`Unrecognized validation rule ${rules[0]}`);
-    }
+        case Rules.Positive:
+          if (!(inputValue > 0)) {
+            throw new Error(`Field "${propertyName}" must be positive number`);
+          }
+          break;
+
+        default:
+          throw new Error(`Unrecognized validation rule ${rule}`);
+      }
+    });
   });
 }
 
