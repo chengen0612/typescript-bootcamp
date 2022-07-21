@@ -8,9 +8,9 @@
  * @see https://2ality.com/2020/04/classes-as-values-typescript.html#a-generic-type-for-classes%3A-class%3Ct%3E
  */
 
-// Tell typescript that the target of this decorator can be initialized with the new operator.
+// Tell typescript that the target of this decorator can be instantiated with the new operator.
 // Also declare that the generated instance will have a name property in string type
-// so we can refer to the name property in the return constructor.
+// so we can refer to the name property in the return constructor without getting error.
 function RegisterEmail<T extends { new (...args: any[]): { name: string } }>(
   originalConstructor: T
 ) {
