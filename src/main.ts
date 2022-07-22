@@ -16,7 +16,7 @@ interface DataSchema {
 /* Decorator */
 function AutoBind(
   _constructor: object,
-  _propertyName: string,
+  _methodName: string,
   descriptor: PropertyDescriptor
 ): PropertyDescriptor {
   return {
@@ -131,16 +131,10 @@ class ProductForm {
   private submitHandler(event: Event) {
     event.preventDefault();
 
-    const formData = new FormData(this.instance);
-    const title = formData.get("title")! as string;
-    const description = formData.get("description")! as string;
-    const manday = formData.get("manday")! as string;
-
-    const project = new Project(title, description, +manday);
-
     try {
-      validate(project);
+      this.inspect();
       alert("All validation passed!");
+      this.reset();
     } catch (error: any) {
       alert(error.message);
     }
@@ -159,6 +153,21 @@ class ProductForm {
   private insert() {
     const root = document.getElementById("root")! as HTMLDivElement;
     root.appendChild(this.instance);
+  }
+
+  inspect() {
+    const formData = new FormData(this.instance);
+    const title = formData.get("title")! as string;
+    const description = formData.get("description")! as string;
+    const manday = formData.get("manday")! as string;
+
+    const project = new Project(title, description, +manday);
+
+    validate(project);
+  }
+
+  reset() {
+    this.instance.reset();
   }
 }
 
