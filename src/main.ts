@@ -14,6 +14,20 @@ interface DataSchema {
 }
 
 /* Decorator */
+function AutoBind(
+  _constructor: object,
+  _propertyName: string,
+  descriptor: PropertyDescriptor
+): PropertyDescriptor {
+  return {
+    configurable: false,
+    enumerable: false,
+    get() {
+      return descriptor.value.bind(this);
+    },
+  };
+}
+
 function ApplyRule(rule: Rule | Rule[]) {
   return function (_constructor: object, propertyName: string) {
     projectSchema[propertyName] = [
@@ -91,45 +105,61 @@ class Project {
   }
 }
 
-/* Dom interaction */
-const root = document.getElementById("root")! as HTMLDivElement;
-const formTemplate = document.getElementById(
-  "project-input"
-)! as HTMLTemplateElement;
-const listTemplate = document.getElementById(
-  "project-list"
-)! as HTMLTemplateElement;
-const projectTemplate = document.getElementById(
-  "single-project"
-)! as HTMLTemplateElement;
-
-const formClone = formTemplate.content.cloneNode(true) as HTMLFormElement;
-
-root.append(formClone);
-
 /* Body */
-const form = root.querySelector("form")! as HTMLFormElement;
+class ProductForm {
+  readonly template: HTMLTemplateElement;
+  private instance: HTMLFormElement;
 
-form.addEventListener("input", (event) => {
-  const target = event.target as HTMLInputElement;
-  console.log(target.value);
-});
+  constructor() {
+    const template = document.getElementById(
+      "project-input"
+    )! as HTMLTemplateElement;
+    const clone = template.content.firstElementChild!.cloneNode(
+      true
+    ) as HTMLFormElement;
 
-form.addEventListener("submit", function (event) {
-  event.preventDefault();
+    clone.id = "user-input";
 
-  const formData = new FormData(this);
-  const title = formData.get("title")! as string;
-  const description = formData.get("description")! as string;
-  const manday = formData.get("manday")! as string;
+    this.template = template;
+    this.instance = clone;
 
-  const project = new Project(title, description, +manday);
-  console.log(project);
-
-  try {
-    validate(project);
-    alert("All validation passed!");
-  } catch (error: any) {
-    alert(error.message);
+    this.listen();
+    this.insert();
   }
-});
+
+  @AutoBind
+  private submitHandler(event: Event) {
+    event.preventDefault();
+
+    const formData = new FormData(this.instance);
+    const title = formData.get("title")! as string;
+    const description = formData.get("description")! as string;
+    const manday = formData.get("manday")! as string;
+
+    const project = new Project(title, description, +manday);
+
+    try {
+      validate(project);
+      alert("All validation passed!");
+    } catch (error: any) {
+      alert(error.message);
+    }
+  }
+
+  private inputHandler(event: Event) {
+    const target = event.target as HTMLInputElement;
+    console.log(target.value);
+  }
+
+  private listen() {
+    this.instance.addEventListener("submit", this.submitHandler);
+    this.instance.addEventListener("input", this.inputHandler);
+  }
+
+  private insert() {
+    const root = document.getElementById("root")! as HTMLDivElement;
+    root.appendChild(this.instance);
+  }
+}
+
+const p = new ProductForm();
