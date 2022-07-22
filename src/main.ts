@@ -28,6 +28,19 @@ function AutoBind(
   };
 }
 
+function Writable(bool: boolean) {
+  return function (
+    _constructor: object,
+    _methodName: string,
+    descriptor: PropertyDescriptor
+  ): PropertyDescriptor {
+    return {
+      ...descriptor,
+      writable: bool,
+    };
+  };
+}
+
 function ApplyRule(rule: Rule | Rule[]) {
   return function (_constructor: object, propertyName: string) {
     projectSchema[propertyName] = [
@@ -155,6 +168,7 @@ class ProductForm {
     root.appendChild(this.instance);
   }
 
+  @Writable(false)
   inspect() {
     const formData = new FormData(this.instance);
     const title = formData.get("title")! as string;
@@ -166,6 +180,7 @@ class ProductForm {
     validate(project);
   }
 
+  @Writable(false)
   reset() {
     this.instance.reset();
   }
