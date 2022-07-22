@@ -13,6 +13,12 @@ interface DataSchema {
   [propertyName: string]: Rule[];
 }
 
+interface ProjectType {
+  title: string;
+  description: string;
+  manday: number;
+}
+
 /* Decorator */
 function AutoBind(
   _constructor: object,
@@ -99,6 +105,40 @@ function validate(project: object) {
 }
 
 /* Class */
+class Store {
+  private static instance: Store;
+  private projects: any[];
+  private listeners: Function[];
+
+  private constructor() {
+    this.projects = [];
+    this.listeners = [];
+  }
+
+  static refer() {
+    if (!this.instance) {
+      this.instance = new Store();
+    }
+
+    return this.instance;
+  }
+
+  subscribe(listener: Function) {
+    this.listeners = [...this.listeners, listener];
+  }
+
+  addProjects(project: any) {
+    this.projects = [...this.projects, project];
+
+    for (const listener of this.listeners) {
+      // TODO: Check implementation
+      listener(this.projects);
+    }
+  }
+}
+
+const store = Store.refer();
+
 const projectSchema: DataSchema = {};
 
 class Project {
@@ -118,7 +158,6 @@ class Project {
   }
 }
 
-/* Body */
 class ProductForm {
   readonly template: HTMLTemplateElement;
   private instance: HTMLFormElement;
@@ -131,13 +170,11 @@ class ProductForm {
       true
     ) as HTMLFormElement;
 
-    clone.id = "user-input";
-
     this.template = template;
     this.instance = clone;
 
-    this.listen();
-    this.insert();
+    this.initialize();
+    this.render();
   }
 
   @AutoBind
@@ -145,8 +182,11 @@ class ProductForm {
     event.preventDefault();
 
     try {
-      this.inspect();
+      const data = this.read();
+      this.inspect(data);
       alert("All validation passed!");
+      // TODO: Check implementation
+      store.addProjects(data);
       this.reset();
     } catch (error: any) {
       alert(error.message);
@@ -158,26 +198,31 @@ class ProductForm {
     console.log(target.value);
   }
 
-  private listen() {
+  private initialize() {
+    this.instance.id = "user-input";
     this.instance.addEventListener("submit", this.submitHandler);
     this.instance.addEventListener("input", this.inputHandler);
   }
 
-  private insert() {
+  private render() {
     const root = document.getElementById("root")! as HTMLDivElement;
     root.appendChild(this.instance);
   }
 
   @Writable(false)
-  inspect() {
+  read() {
     const formData = new FormData(this.instance);
+
     const title = formData.get("title")! as string;
     const description = formData.get("description")! as string;
     const manday = formData.get("manday")! as string;
 
-    const project = new Project(title, description, +manday);
+    return new Project(title, description, +manday);
+  }
 
-    validate(project);
+  @Writable(false)
+  inspect(data: Project) {
+    validate(data);
   }
 
   @Writable(false)
@@ -186,4 +231,75 @@ class ProductForm {
   }
 }
 
-const p = new ProductForm();
+class ProjectsList {
+  readonly template: HTMLTemplateElement;
+  private instance: HTMLElement;
+  readonly variant: "active" | "finished";
+
+  constructor(variant: "active" | "finished") {
+    const template = document.getElementById(
+      "project-list"
+    )! as HTMLTemplateElement;
+    const clone = template.content.firstElementChild!.cloneNode(
+      true
+    ) as HTMLElement;
+
+    this.template = template;
+    this.instance = clone;
+    this.variant = variant;
+
+    this.initialize();
+    this.render();
+  }
+
+  private initialize() {
+    this.instance.id = `${this.variant}-projects`;
+    this.instance.querySelector("h2")!.textContent = {
+      active: "実行中プロジェクト",
+      finished: "完了プロジェクト",
+    }[this.variant];
+    this.instance.querySelector("ul")!.id = `${this.variant}-projects-list`;
+
+    // TODO: Check implementation
+    store.subscribe((projects: any[]) => {
+      this.instance.replaceChildren();
+
+      projects.forEach((project) => {
+        const li = document.createElement("li");
+        li.textContent = project.title;
+
+        this.instance.appendChild(li);
+      });
+    });
+  }
+
+  private render() {
+    const root = document.getElementById("root")! as HTMLDivElement;
+    root.appendChild(this.instance);
+  }
+}
+
+// class ProjectListItem {
+//   readonly template: HTMLTemplateElement;
+//   private instance: HTMLLIElement;
+
+//   constructor() {
+//     const template = document.getElementById(
+//       "single-project"
+//     )! as HTMLTemplateElement;
+//     const clone = template.content.firstElementChild!.cloneNode(
+//       true
+//     ) as HTMLLIElement;
+
+//     this.template = template;
+//     this.instance = clone;
+
+//     this.instantiate;
+//   }
+
+//   private instantiate() {}
+// }
+
+const productForm = new ProductForm();
+const activeProjectsList = new ProjectsList("active");
+const finishedProjectsList = new ProjectsList("finished");
