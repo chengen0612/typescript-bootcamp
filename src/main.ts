@@ -13,13 +13,13 @@ interface DataSchema {
   [propertyName: string]: Rule[];
 }
 
-enum State {
+enum Status {
   Active = "active",
   Completed = "finished",
 }
 
-type ProjectsListKind = `${State}`;
-type ProjectStatus = `${State}`;
+type ProjectsListKind = `${Status}`;
+type ProjectStatus = `${Status}`;
 
 /* Decorator */
 function AutoBind(
@@ -109,39 +109,47 @@ function validate(project: Project) {
 }
 
 /* Class */
-class Store {
-  private static instance: Store;
-  private projects: Project[];
-  private listeners: Function[];
+type Listener<T> = (items: T) => void;
 
-  private constructor() {
-    this.projects = [];
+abstract class State<T> {
+  protected listeners: Listener<T>[];
+  protected state: T;
+
+  protected constructor(initialState: T) {
     this.listeners = [];
+    this.state = initialState;
+  }
+
+  addListener(callback: Listener<T>) {
+    this.listeners.push(callback);
+  }
+}
+
+class ProjectsState extends State<Project[]> {
+  private static instance: ProjectsState;
+
+  constructor(initialState: Project[]) {
+    super(initialState);
   }
 
   static refer() {
     if (!this.instance) {
-      this.instance = new Store();
+      this.instance = new ProjectsState([]);
     }
 
     return this.instance;
   }
 
-  subscribe(listener: Function) {
-    this.listeners = [...this.listeners, listener];
-  }
-
-  addProjects(project: Project) {
-    this.projects = [...this.projects, project];
+  addProject(project: Project) {
+    this.state.push(project);
 
     for (const listener of this.listeners) {
-      // TODO: Check implementation
-      listener(this.projects);
+      listener(this.state.slice());
     }
   }
 }
 
-const store = Store.refer();
+const projectsState = ProjectsState.refer();
 
 const projectSchema: DataSchema = {};
 
@@ -164,7 +172,7 @@ class Project {
     this.title = title;
     this.description = description;
     this.manday = +manday;
-    this.status = State.Active;
+    this.status = Status.Active;
   }
 }
 
@@ -195,7 +203,7 @@ class ProductForm {
       const data = this.read();
       this.inspect(data);
       alert("All validation passed!");
-      store.addProjects(data);
+      projectsState.addProject(data);
       this.reset();
     } catch (error: any) {
       alert(error.message);
@@ -276,7 +284,7 @@ abstract class ProjectsList {
 }
 
 class ActiveProjectsList extends ProjectsList {
-  kind: ProjectsListKind = State.Active;
+  kind: ProjectsListKind = Status.Active;
 
   constructor() {
     super();
@@ -286,7 +294,7 @@ class ActiveProjectsList extends ProjectsList {
 
   initialize() {
     super.initialize();
-    store.subscribe((projects: Project[]) => {
+    projectsState.addListener((projects: Project[]) => {
       this.ul.replaceChildren();
 
       projects.forEach((project) => {
@@ -300,7 +308,7 @@ class ActiveProjectsList extends ProjectsList {
 }
 
 class FinishedProjectsList extends ProjectsList {
-  kind: ProjectsListKind = State.Completed;
+  kind: ProjectsListKind = Status.Completed;
 
   constructor() {
     super();
