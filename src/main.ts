@@ -231,51 +231,74 @@ class ProductForm {
   }
 }
 
-class ProjectsList {
-  readonly template: HTMLTemplateElement;
-  private instance: HTMLElement;
-  readonly variant: "active" | "finished";
+type ProjectsListKind = "active" | "finished";
 
-  constructor(variant: "active" | "finished") {
+abstract class ProjectsList {
+  protected template: HTMLTemplateElement;
+  protected instance: HTMLElement;
+  protected ul: HTMLUListElement;
+  protected abstract kind: ProjectsListKind;
+
+  constructor() {
     const template = document.getElementById(
       "project-list"
     )! as HTMLTemplateElement;
     const clone = template.content.firstElementChild!.cloneNode(
       true
     ) as HTMLElement;
+    const ul = clone.querySelector("ul")! as HTMLUListElement;
 
     this.template = template;
     this.instance = clone;
-    this.variant = variant;
+    this.ul = ul;
+  }
 
+  protected initialize() {
+    this.instance.id = `${this.kind}-projects`;
+    this.instance.querySelector("h2")!.textContent = {
+      active: "実行中プロジェクト",
+      finished: "完了プロジェクト",
+    }[this.kind];
+    this.ul.id = `${this.kind}-projects-list`;
+  }
+
+  protected render() {
+    const root = document.getElementById("root")! as HTMLDivElement;
+    root.appendChild(this.instance);
+  }
+}
+
+class ActiveProjectsList extends ProjectsList {
+  kind: ProjectsListKind = "active";
+
+  constructor() {
+    super();
     this.initialize();
     this.render();
   }
 
-  private initialize() {
-    this.instance.id = `${this.variant}-projects`;
-    this.instance.querySelector("h2")!.textContent = {
-      active: "実行中プロジェクト",
-      finished: "完了プロジェクト",
-    }[this.variant];
-    this.instance.querySelector("ul")!.id = `${this.variant}-projects-list`;
-
-    // TODO: Check implementation
+  initialize() {
+    super.initialize();
     store.subscribe((projects: any[]) => {
-      this.instance.replaceChildren();
+      this.ul.replaceChildren();
 
       projects.forEach((project) => {
         const li = document.createElement("li");
         li.textContent = project.title;
 
-        this.instance.appendChild(li);
+        this.ul.appendChild(li);
       });
     });
   }
+}
 
-  private render() {
-    const root = document.getElementById("root")! as HTMLDivElement;
-    root.appendChild(this.instance);
+class FinishedProjectsList extends ProjectsList {
+  kind: ProjectsListKind = "finished";
+
+  constructor() {
+    super();
+    this.initialize();
+    this.render();
   }
 }
 
@@ -294,12 +317,12 @@ class ProjectsList {
 //     this.template = template;
 //     this.instance = clone;
 
-//     this.instantiate;
+//     this.initialize();
 //   }
 
-//   private instantiate() {}
+//   private initialize() {}
 // }
 
 const productForm = new ProductForm();
-const activeProjectsList = new ProjectsList("active");
-const finishedProjectsList = new ProjectsList("finished");
+const activeProjectsList = new ActiveProjectsList();
+const finishedProjectsList = new FinishedProjectsList();
