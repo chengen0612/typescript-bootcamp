@@ -13,11 +13,13 @@ interface DataSchema {
   [propertyName: string]: Rule[];
 }
 
-interface ProjectType {
-  title: string;
-  description: string;
-  manday: number;
+enum State {
+  Active = "active",
+  Completed = "finished",
 }
+
+type ProjectsListKind = `${State}`;
+type ProjectStatus = `${State}`;
 
 /* Decorator */
 function AutoBind(
@@ -92,22 +94,24 @@ const validatorMap: RuleValidatorMap = {
   [Rule.Positive]: positiveValidator,
 };
 
-function validate(project: object) {
+function validate(project: Project) {
   Object.entries(project).forEach(([propertyName, value]) => {
     const propertyRules = projectSchema[propertyName];
 
-    propertyRules.forEach((rule) => {
-      const validator = validatorMap[rule];
+    if (propertyRules) {
+      propertyRules.forEach((rule) => {
+        const validator = validatorMap[rule];
 
-      validator(propertyName, value);
-    });
+        validator(propertyName, value);
+      });
+    }
   });
 }
 
 /* Class */
 class Store {
   private static instance: Store;
-  private projects: any[];
+  private projects: Project[];
   private listeners: Function[];
 
   private constructor() {
@@ -127,7 +131,7 @@ class Store {
     this.listeners = [...this.listeners, listener];
   }
 
-  addProjects(project: any) {
+  addProjects(project: Project) {
     this.projects = [...this.projects, project];
 
     for (const listener of this.listeners) {
@@ -142,6 +146,8 @@ const store = Store.refer();
 const projectSchema: DataSchema = {};
 
 class Project {
+  readonly id: string;
+
   @ApplyRule(Rule.String)
   title: string;
 
@@ -151,10 +157,14 @@ class Project {
   @ApplyRule(Rule.Positive)
   manday: number;
 
-  constructor(title: string, description: string, manday: number) {
+  status: ProjectStatus;
+
+  constructor(title: string, description: string, manday: string) {
+    this.id = Math.floor(Math.random() * 100).toString();
     this.title = title;
     this.description = description;
-    this.manday = manday;
+    this.manday = +manday;
+    this.status = State.Active;
   }
 }
 
@@ -185,7 +195,6 @@ class ProductForm {
       const data = this.read();
       this.inspect(data);
       alert("All validation passed!");
-      // TODO: Check implementation
       store.addProjects(data);
       this.reset();
     } catch (error: any) {
@@ -213,11 +222,11 @@ class ProductForm {
   read() {
     const formData = new FormData(this.instance);
 
-    const title = formData.get("title")! as string;
-    const description = formData.get("description")! as string;
-    const manday = formData.get("manday")! as string;
-
-    return new Project(title, description, +manday);
+    return new Project(
+      formData.get("title")! as string,
+      formData.get("description")! as string,
+      formData.get("manday")! as string
+    );
   }
 
   @Writable(false)
@@ -230,8 +239,6 @@ class ProductForm {
     this.instance.reset();
   }
 }
-
-type ProjectsListKind = "active" | "finished";
 
 abstract class ProjectsList {
   protected template: HTMLTemplateElement;
@@ -269,7 +276,7 @@ abstract class ProjectsList {
 }
 
 class ActiveProjectsList extends ProjectsList {
-  kind: ProjectsListKind = "active";
+  kind: ProjectsListKind = State.Active;
 
   constructor() {
     super();
@@ -279,7 +286,7 @@ class ActiveProjectsList extends ProjectsList {
 
   initialize() {
     super.initialize();
-    store.subscribe((projects: any[]) => {
+    store.subscribe((projects: Project[]) => {
       this.ul.replaceChildren();
 
       projects.forEach((project) => {
@@ -293,7 +300,7 @@ class ActiveProjectsList extends ProjectsList {
 }
 
 class FinishedProjectsList extends ProjectsList {
-  kind: ProjectsListKind = "finished";
+  kind: ProjectsListKind = State.Completed;
 
   constructor() {
     super();
