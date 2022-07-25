@@ -147,6 +147,14 @@ class ProjectsState extends State<Project[]> {
       listener(this.state.slice());
     }
   }
+
+  // updateProject(id: string, options: Partial<Project>) {
+  //   if (options) {
+  //     const index = this.state.findIndex((project) => project.id === id);
+
+  //     this.state[index] = { ...this.state[index], ...options };
+  //   }
+  // }
 }
 
 const projectsState = ProjectsState.refer();
@@ -254,6 +262,8 @@ class ProductForm extends Component<HTMLFormElement, HTMLDivElement> {
   }
 }
 
+const DRAG_ID_TYPE = "text/plain";
+
 abstract class ProjectsList extends Component<HTMLElement, HTMLDivElement> {
   readonly ul: HTMLUListElement;
   protected abstract kind: ProjectsListKind;
@@ -272,6 +282,36 @@ abstract class ProjectsList extends Component<HTMLElement, HTMLDivElement> {
       finished: "完了プロジェクト",
     }[this.kind];
     this.ul.id = `${this.kind}-projects-list`;
+
+    this.instance.addEventListener("dragstart", this.dragstartHandler);
+    this.instance.addEventListener("dragover", this.dragoverHandler);
+    this.instance.addEventListener("drop", this.dropHandler);
+  }
+
+  private dragstartHandler(event: DragEvent) {
+    const target = event.target! as HTMLLIElement;
+
+    event.dataTransfer!.setData(DRAG_ID_TYPE, target.id);
+    event.dataTransfer!.dropEffect = "move";
+  }
+
+  private dragoverHandler(event: DragEvent) {
+    event.preventDefault();
+  }
+
+  @AutoBind
+  private dropHandler(event: DragEvent) {
+    event.preventDefault();
+
+    const draggedItemId = event.dataTransfer!.getData(DRAG_ID_TYPE);
+    const draggedItem = document.getElementById(draggedItemId)!;
+
+    draggedItem.parentNode!.removeChild(draggedItem);
+    this.ul.appendChild(draggedItem);
+
+    // projectsState.updateProject(draggedItemId, {
+    //   status: this.kind === "active" ? "finished" : "active",
+    // });
   }
 }
 
@@ -322,7 +362,7 @@ class ProjectsListItem extends Component<HTMLLIElement, HTMLUListElement> {
   }
 
   private initialize() {
-    const { title, description, manday } = this.data;
+    const { id, title, description, manday } = this.data;
 
     const contentDomString = `
       <h2>${title}</h2>
@@ -330,6 +370,8 @@ class ProjectsListItem extends Component<HTMLLIElement, HTMLUListElement> {
       <p>${description}<p>
     `;
 
+    this.instance.id = id;
+    this.instance.draggable = true;
     this.instance.innerHTML = contentDomString;
   }
 }
