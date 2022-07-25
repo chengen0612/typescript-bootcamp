@@ -177,7 +177,7 @@ class Project {
 }
 
 abstract class Component<T extends HTMLElement, V extends HTMLElement> {
-  protected instance: T;
+  readonly instance: T;
   protected parentNode: V;
 
   constructor(templateId: string, parentId: string) {
@@ -255,7 +255,7 @@ class ProductForm extends Component<HTMLFormElement, HTMLDivElement> {
 }
 
 abstract class ProjectsList extends Component<HTMLElement, HTMLDivElement> {
-  protected ul: HTMLUListElement;
+  readonly ul: HTMLUListElement;
   protected abstract kind: ProjectsListKind;
 
   constructor() {
@@ -290,10 +290,9 @@ class ActiveProjectsList extends ProjectsList {
       this.ul.replaceChildren();
 
       projects.forEach((project) => {
-        const li = document.createElement("li");
-        li.textContent = project.title;
+        const projectItem = new ProjectsListItem(project);
 
-        this.ul.appendChild(li);
+        this.ul.appendChild(projectItem.instance);
       });
     });
   }
@@ -309,26 +308,31 @@ class FinishedProjectsList extends ProjectsList {
   }
 }
 
-// class ProjectListItem {
-//   readonly template: HTMLTemplateElement;
-//   private instance: HTMLLIElement;
+class ProjectsListItem extends Component<HTMLLIElement, HTMLUListElement> {
+  readonly data: Project;
 
-//   constructor() {
-//     const template = document.getElementById(
-//       "single-project"
-//     )! as HTMLTemplateElement;
-//     const clone = template.content.firstElementChild!.cloneNode(
-//       true
-//     ) as HTMLLIElement;
+  constructor(project: Project) {
+    super("single-project", activeProjectsList.ul.id);
+    this.data = project;
+    this.initialize();
+  }
 
-//     this.template = template;
-//     this.instance = clone;
+  private formatManday(manday: number): string {
+    return manday < 20 ? manday + "人日" : manday / 20 + "人月";
+  }
 
-//     this.initialize();
-//   }
+  private initialize() {
+    const { title, description, manday } = this.data;
 
-//   private initialize() {}
-// }
+    const contentDomString = `
+      <h2>${title}</h2>
+      <h3>${this.formatManday(+manday)}</h3>
+      <p>${description}<p>
+    `;
+
+    this.instance.innerHTML = contentDomString;
+  }
+}
 
 const productForm = new ProductForm("project-input", "root", "user-input");
 const activeProjectsList = new ActiveProjectsList();
