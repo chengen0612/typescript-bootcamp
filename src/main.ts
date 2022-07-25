@@ -176,21 +176,32 @@ class Project {
   }
 }
 
-class ProductForm {
-  readonly template: HTMLTemplateElement;
-  private instance: HTMLFormElement;
+abstract class Component<T extends HTMLElement, V extends HTMLElement> {
+  protected instance: T;
+  protected parentNode: V;
 
-  constructor() {
+  constructor(templateId: string, parentId: string) {
     const template = document.getElementById(
-      "project-input"
+      templateId
     )! as HTMLTemplateElement;
-    const clone = template.content.firstElementChild!.cloneNode(
-      true
-    ) as HTMLFormElement;
+    const clone = template.content.firstElementChild!.cloneNode(true) as T;
+    const parentNode = document.getElementById(parentId)! as V;
 
-    this.template = template;
     this.instance = clone;
+    this.parentNode = parentNode;
+  }
 
+  protected render() {
+    this.parentNode.appendChild(this.instance);
+  }
+}
+
+class ProductForm extends Component<HTMLFormElement, HTMLDivElement> {
+  private instanceId: string;
+
+  constructor(templateId: string, parentId: string, instanceId: string) {
+    super(templateId, parentId);
+    this.instanceId = instanceId;
     this.initialize();
     this.render();
   }
@@ -216,14 +227,9 @@ class ProductForm {
   }
 
   private initialize() {
-    this.instance.id = "user-input";
+    this.instance.id = this.instanceId;
     this.instance.addEventListener("submit", this.submitHandler);
     this.instance.addEventListener("input", this.inputHandler);
-  }
-
-  private render() {
-    const root = document.getElementById("root")! as HTMLDivElement;
-    root.appendChild(this.instance);
   }
 
   @Writable(false)
@@ -248,24 +254,15 @@ class ProductForm {
   }
 }
 
-abstract class ProjectsList {
-  protected template: HTMLTemplateElement;
-  protected instance: HTMLElement;
+abstract class ProjectsList extends Component<HTMLElement, HTMLDivElement> {
   protected ul: HTMLUListElement;
   protected abstract kind: ProjectsListKind;
 
   constructor() {
-    const template = document.getElementById(
-      "project-list"
-    )! as HTMLTemplateElement;
-    const clone = template.content.firstElementChild!.cloneNode(
-      true
-    ) as HTMLElement;
-    const ul = clone.querySelector("ul")! as HTMLUListElement;
-
-    this.template = template;
-    this.instance = clone;
-    this.ul = ul;
+    super("project-list", "root");
+    this.ul = this.instance.querySelector("ul")! as HTMLUListElement;
+    this.initialize();
+    this.render();
   }
 
   protected initialize() {
@@ -275,11 +272,6 @@ abstract class ProjectsList {
       finished: "完了プロジェクト",
     }[this.kind];
     this.ul.id = `${this.kind}-projects-list`;
-  }
-
-  protected render() {
-    const root = document.getElementById("root")! as HTMLDivElement;
-    root.appendChild(this.instance);
   }
 }
 
@@ -338,6 +330,6 @@ class FinishedProjectsList extends ProjectsList {
 //   private initialize() {}
 // }
 
-const productForm = new ProductForm();
+const productForm = new ProductForm("project-input", "root", "user-input");
 const activeProjectsList = new ActiveProjectsList();
 const finishedProjectsList = new FinishedProjectsList();
