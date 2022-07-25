@@ -134,6 +134,8 @@ abstract class State<T> {
   addListener(callback: Listener<T>) {
     this.listeners.push(callback);
   }
+
+  protected abstract loopListeners(): void;
 }
 
 class ProjectsState extends State<Project[]> {
@@ -153,19 +155,23 @@ class ProjectsState extends State<Project[]> {
 
   addProject(project: Project) {
     this.state.push(project);
+    this.loopListeners();
+  }
 
+  updateProject(id: string, options: Partial<Omit<Project, "id">>) {
+    if (options) {
+      const index = this.state.findIndex((project) => project.id === id);
+
+      this.state[index] = { ...this.state[index], ...options };
+      this.loopListeners();
+    }
+  }
+
+  protected loopListeners() {
     for (const listener of this.listeners) {
       listener(this.state.slice());
     }
   }
-
-  // updateProject(id: string, options: Partial<Project>) {
-  //   if (options) {
-  //     const index = this.state.findIndex((project) => project.id === id);
-
-  //     this.state[index] = { ...this.state[index], ...options };
-  //   }
-  // }
 }
 
 const projectsState = ProjectsState.refer();
@@ -293,35 +299,29 @@ abstract class ProjectsList extends Component<HTMLElement, HTMLDivElement> {
     }[this.kind];
     this.ul.id = `${this.kind}-projects-list`;
 
-    this.instance.addEventListener("dragover", this.dragoverHandler);
-    this.instance.addEventListener("dragleave", this.dragleaveHandler);
-    this.instance.addEventListener("drop", this.dropHandler);
+    this.ul.addEventListener("dragover", this.dragoverHandler);
+    this.ul.addEventListener("drop", this.dropHandler);
   }
 
   @AutoBind
   protected dragoverHandler(event: DragEvent) {
     event.preventDefault();
-    this.ul.classList.add("droppable");
-  }
-
-  @AutoBind
-  protected dragleaveHandler(_event: DragEvent) {
-    this.ul.classList.remove("droppable");
   }
 
   @AutoBind
   protected dropHandler(event: DragEvent) {
     event.preventDefault();
 
+    const currentTarget = event.currentTarget! as HTMLDivElement;
     const draggedItemId = event.dataTransfer!.getData(DRAG_FORMAT_STR);
     const draggedItem = document.getElementById(draggedItemId)!;
 
-    draggedItem.parentNode!.removeChild(draggedItem);
-    this.ul.appendChild(draggedItem);
+    if (!currentTarget.contains(draggedItem)) {
+      draggedItem.parentNode!.removeChild(draggedItem);
+      this.ul.appendChild(draggedItem);
 
-    // projectsState.updateProject(draggedItemId, {
-    //   status: this.kind === "active" ? "finished" : "active",
-    // });
+      projectsState.updateProject(draggedItemId, { status: this.kind });
+    }
   }
 }
 
@@ -339,11 +339,13 @@ class ActiveProjectsList extends ProjectsList {
     projectsState.addListener((projects: Project[]) => {
       this.ul.replaceChildren();
 
-      projects.forEach((project) => {
-        const projectItem = new ProjectsListItem(project);
+      projects
+        .filter((project) => project.status === Status.Active)
+        .forEach((project) => {
+          const projectItem = new ProjectsListItem(project);
 
-        this.ul.appendChild(projectItem.instance);
-      });
+          this.ul.appendChild(projectItem.instance);
+        });
     });
   }
 }
