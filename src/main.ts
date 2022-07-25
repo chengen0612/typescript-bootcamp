@@ -21,6 +21,17 @@ enum Status {
 type ProjectsListKind = `${Status}`;
 type ProjectStatus = `${Status}`;
 
+// interface Draggable {
+//   dragstartHandler(event: DragEvent): void;
+//   dragendHandler?(event: DragEvent): void;
+// }
+
+// interface Droppable {
+//   dragoverHandler(event: DragEvent): void;
+//   dragleaveHandler?(event: DragEvent): void;
+//   dropHandler(event: DragEvent): void;
+// }
+
 /* Decorator */
 function AutoBind(
   _constructor: object,
@@ -262,8 +273,9 @@ class ProductForm extends Component<HTMLFormElement, HTMLDivElement> {
   }
 }
 
-const DRAG_ID_TYPE = "text/plain";
+const DRAG_FORMAT_STR = "text/plain";
 
+// Droppable
 abstract class ProjectsList extends Component<HTMLElement, HTMLDivElement> {
   readonly ul: HTMLUListElement;
   protected abstract kind: ProjectsListKind;
@@ -271,8 +283,6 @@ abstract class ProjectsList extends Component<HTMLElement, HTMLDivElement> {
   constructor() {
     super("project-list", "root");
     this.ul = this.instance.querySelector("ul")! as HTMLUListElement;
-    this.initialize();
-    this.render();
   }
 
   protected initialize() {
@@ -283,27 +293,27 @@ abstract class ProjectsList extends Component<HTMLElement, HTMLDivElement> {
     }[this.kind];
     this.ul.id = `${this.kind}-projects-list`;
 
-    this.instance.addEventListener("dragstart", this.dragstartHandler);
     this.instance.addEventListener("dragover", this.dragoverHandler);
+    this.instance.addEventListener("dragleave", this.dragleaveHandler);
     this.instance.addEventListener("drop", this.dropHandler);
   }
 
-  private dragstartHandler(event: DragEvent) {
-    const target = event.target! as HTMLLIElement;
-
-    event.dataTransfer!.setData(DRAG_ID_TYPE, target.id);
-    event.dataTransfer!.dropEffect = "move";
-  }
-
-  private dragoverHandler(event: DragEvent) {
+  @AutoBind
+  protected dragoverHandler(event: DragEvent) {
     event.preventDefault();
+    this.ul.classList.add("droppable");
   }
 
   @AutoBind
-  private dropHandler(event: DragEvent) {
+  protected dragleaveHandler(_event: DragEvent) {
+    this.ul.classList.remove("droppable");
+  }
+
+  @AutoBind
+  protected dropHandler(event: DragEvent) {
     event.preventDefault();
 
-    const draggedItemId = event.dataTransfer!.getData(DRAG_ID_TYPE);
+    const draggedItemId = event.dataTransfer!.getData(DRAG_FORMAT_STR);
     const draggedItem = document.getElementById(draggedItemId)!;
 
     draggedItem.parentNode!.removeChild(draggedItem);
@@ -348,6 +358,7 @@ class FinishedProjectsList extends ProjectsList {
   }
 }
 
+// Draggable
 class ProjectsListItem extends Component<HTMLLIElement, HTMLUListElement> {
   readonly data: Project;
 
@@ -355,10 +366,6 @@ class ProjectsListItem extends Component<HTMLLIElement, HTMLUListElement> {
     super("single-project", activeProjectsList.ul.id);
     this.data = project;
     this.initialize();
-  }
-
-  private formatManday(manday: number): string {
-    return manday < 20 ? manday + "人日" : manday / 20 + "人月";
   }
 
   private initialize() {
@@ -373,6 +380,17 @@ class ProjectsListItem extends Component<HTMLLIElement, HTMLUListElement> {
     this.instance.id = id;
     this.instance.draggable = true;
     this.instance.innerHTML = contentDomString;
+    this.instance.addEventListener("dragstart", this.dragstartHandler);
+  }
+
+  @AutoBind
+  protected dragstartHandler(event: DragEvent) {
+    event.dataTransfer!.effectAllowed = "move";
+    event.dataTransfer!.setData(DRAG_FORMAT_STR, this.data.id);
+  }
+
+  private formatManday(manday: number): string {
+    return manday < 20 ? manday + "人日" : manday / 20 + "人月";
   }
 }
 
