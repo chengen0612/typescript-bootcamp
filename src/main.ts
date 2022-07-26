@@ -1,17 +1,21 @@
 /* Type */
+type PlainObject = { [key: string | symbol]: unknown };
+
 enum Rule {
   String = "string",
   Positive = "positive",
 }
 
 type RuleValidatorMap = {
-  [value in Rule]: (propertyName: string, value: unknown) => void;
+  [value in Rule]: (propertyKey: string, value: unknown) => void;
 };
 
 /** @desc Determine the shape of each property of the object. */
 interface DataSchema {
-  [propertyName: string]: Rule[];
+  [propertyKey: string]: Rule[];
 }
+
+type Observer<T> = (items: T) => void;
 
 enum Status {
   Active = "active",
@@ -21,21 +25,21 @@ enum Status {
 type ProjectsListKind = `${Status}`;
 type ProjectStatus = `${Status}`;
 
-// interface Draggable {
-//   dragstartHandler(event: DragEvent): void;
-//   dragendHandler?(event: DragEvent): void;
-// }
+interface Draggable {
+  ondragstart(event: DragEvent): void;
+  ondragend?(event: DragEvent): void;
+}
 
-// interface Droppable {
-//   dragoverHandler(event: DragEvent): void;
-//   dragleaveHandler?(event: DragEvent): void;
-//   dropHandler(event: DragEvent): void;
-// }
+interface Droppable {
+  ondragover(event: DragEvent): void;
+  ondragleave?(event: DragEvent): void;
+  ondrop(event: DragEvent): void;
+}
 
 /* Decorator */
 function AutoBind(
-  _constructor: object,
-  _methodName: string,
+  _target: object,
+  _propertyKey: string,
   descriptor: PropertyDescriptor
 ): PropertyDescriptor {
   return {
@@ -49,8 +53,8 @@ function AutoBind(
 
 function Writable(bool: boolean) {
   return function (
-    _constructor: object,
-    _methodName: string,
+    _target: object,
+    _propertyKey: string,
     descriptor: PropertyDescriptor
   ): PropertyDescriptor {
     return {
@@ -61,89 +65,85 @@ function Writable(bool: boolean) {
 }
 
 function ApplyRule(rule: Rule | Rule[]) {
-  return function (_constructor: object, propertyName: string) {
-    projectSchema[propertyName] = [
-      ...(projectSchema[propertyName] ?? []),
+  return function (_target: object, propertyKey: string) {
+    projectSchema[propertyKey] = [
+      ...(projectSchema[propertyKey] ?? []),
       ...(Array.isArray(rule) ? rule : [rule]),
     ];
   };
 }
 
 /* Utility */
-function stringValidator(propertyName: string, value: unknown) {
+function stringValidator(propertyKey: string, value: unknown) {
   if (typeof value !== "string") {
     throw new Error(`
       String validation can only be applied to string value.
-      Property "${propertyName}" does not contain string value.
+      Property "${propertyKey}" does not contain string value.
     `);
   }
 
   if (!(value.trim().length > 0)) {
-    throw new Error(
-      `Input value cannot be empty. Enter "${propertyName}" field before submit.`
-    );
+    throw new Error(`
+      Input value cannot be empty.
+      Enter "${propertyKey}" field before submit.
+    `);
   }
 }
 
-function positiveValidator(propertyName: string, value: unknown) {
+function positiveValidator(propertyKey: string, value: unknown) {
   if (typeof value !== "number") {
     throw new Error(`
       Positive validation can only be applied to number value.
-      Property "${propertyName}" does not contain number value.
+      Property "${propertyKey}" does not contain number value.
     `);
   }
 
   if (!(value > 0)) {
-    throw new Error(
-      `Input value must be greater then 0. Replace "${propertyName}" field with positive number.`
-    );
+    throw new Error(`
+      Input value must be greater then 0.
+      Replace "${propertyKey}" field with positive number.
+    `);
   }
 }
 
-const validatorMap: RuleValidatorMap = {
+const ruleValidatorMap: RuleValidatorMap = {
   [Rule.String]: stringValidator,
   [Rule.Positive]: positiveValidator,
 };
 
-function validate(project: Project) {
-  Object.entries(project).forEach(([propertyName, value]) => {
-    const propertyRules = projectSchema[propertyName];
+function validate(project: PlainObject) {
+  Object.entries(project).forEach(([propertyKey, value]) => {
+    const propertyRules = projectSchema[propertyKey];
 
     if (propertyRules) {
       propertyRules.forEach((rule) => {
-        const validator = validatorMap[rule];
+        const validator = ruleValidatorMap[rule];
 
-        validator(propertyName, value);
+        validator(propertyKey, value);
       });
     }
   });
 }
 
 /* Class */
-type Listener<T> = (items: T) => void;
-
 abstract class State<T> {
-  protected listeners: Listener<T>[];
+  protected observers: Observer<T>[];
   protected state: T;
 
   protected constructor(initialState: T) {
-    this.listeners = [];
+    this.observers = [];
     this.state = initialState;
   }
 
-  addListener(callback: Listener<T>) {
-    this.listeners.push(callback);
+  observe(cb: Observer<T>) {
+    this.observers.push(cb);
   }
 
-  protected abstract loopListeners(): void;
+  protected abstract notify(): void;
 }
 
 class ProjectsState extends State<Project[]> {
   private static instance: ProjectsState;
-
-  constructor(initialState: Project[]) {
-    super(initialState);
-  }
 
   static refer() {
     if (!this.instance) {
@@ -153,23 +153,25 @@ class ProjectsState extends State<Project[]> {
     return this.instance;
   }
 
+  protected constructor(initialState: Project[]) {
+    super(initialState);
+  }
+
   addProject(project: Project) {
     this.state.push(project);
-    this.loopListeners();
+    this.notify();
   }
 
   updateProject(id: string, options: Partial<Omit<Project, "id">>) {
-    if (options) {
-      const index = this.state.findIndex((project) => project.id === id);
+    const index = this.state.findIndex((project) => project.id === id);
 
-      this.state[index] = { ...this.state[index], ...options };
-      this.loopListeners();
-    }
+    this.state[index] = { ...this.state[index], ...options };
+    this.notify();
   }
 
-  protected loopListeners() {
-    for (const listener of this.listeners) {
-      listener(this.state.slice());
+  protected notify() {
+    for (const observer of this.observers) {
+      observer(this.state.slice());
     }
   }
 }
@@ -221,44 +223,20 @@ abstract class Component<T extends HTMLElement, V extends HTMLElement> {
   }
 }
 
-class ProductForm extends Component<HTMLFormElement, HTMLDivElement> {
+class ProjectForm extends Component<HTMLFormElement, HTMLDivElement> {
   private instanceId: string;
 
   constructor(templateId: string, parentId: string, instanceId: string) {
     super(templateId, parentId);
+
     this.instanceId = instanceId;
+
     this.initialize();
     this.render();
   }
 
-  @AutoBind
-  private submitHandler(event: Event) {
-    event.preventDefault();
-
-    try {
-      const data = this.read();
-      this.inspect(data);
-      alert("All validation passed!");
-      projectsState.addProject(data);
-      this.reset();
-    } catch (error: any) {
-      alert(error.message);
-    }
-  }
-
-  private inputHandler(event: Event) {
-    const target = event.target as HTMLInputElement;
-    console.log(target.value);
-  }
-
-  private initialize() {
-    this.instance.id = this.instanceId;
-    this.instance.addEventListener("submit", this.submitHandler);
-    this.instance.addEventListener("input", this.inputHandler);
-  }
-
   @Writable(false)
-  read() {
+  read(): Project {
     const formData = new FormData(this.instance);
 
     return new Project(
@@ -269,26 +247,69 @@ class ProductForm extends Component<HTMLFormElement, HTMLDivElement> {
   }
 
   @Writable(false)
-  inspect(data: Project) {
-    validate(data);
+  inspect(p: Project) {
+    validate({ ...p });
   }
 
   @Writable(false)
   reset() {
     this.instance.reset();
   }
+
+  private initialize() {
+    this.instance.id = this.instanceId;
+    this.instance.addEventListener("submit", this.onsubmit);
+  }
+
+  @AutoBind
+  private onsubmit(event: Event) {
+    event.preventDefault();
+
+    try {
+      const p = this.read();
+      this.inspect(p);
+      alert("All validation passed!");
+      projectsState.addProject(p);
+      this.reset();
+    } catch (error: any) {
+      alert(error.message);
+    }
+  }
 }
 
-const DRAG_FORMAT_STR = "text/plain";
+const PLAIN_TEXT = "text/plain";
 
-// Droppable
-abstract class ProjectsList extends Component<HTMLElement, HTMLDivElement> {
+abstract class ProjectsList
+  extends Component<HTMLElement, HTMLDivElement>
+  implements Droppable
+{
   readonly ul: HTMLUListElement;
   protected abstract kind: ProjectsListKind;
 
   constructor() {
     super("project-list", "root");
     this.ul = this.instance.querySelector("ul")! as HTMLUListElement;
+  }
+
+  @AutoBind
+  ondragover(event: DragEvent) {
+    event.preventDefault();
+  }
+
+  @AutoBind
+  ondrop(event: DragEvent) {
+    event.preventDefault();
+
+    const currentTarget = event.currentTarget! as HTMLDivElement;
+    const draggedNodeId = event.dataTransfer!.getData(PLAIN_TEXT);
+    const draggedNode = document.getElementById(draggedNodeId)!;
+
+    if (!currentTarget.contains(draggedNode)) {
+      draggedNode.parentNode!.removeChild(draggedNode);
+      this.ul.appendChild(draggedNode);
+
+      projectsState.updateProject(draggedNodeId, { status: this.kind });
+    }
   }
 
   protected initialize() {
@@ -299,29 +320,8 @@ abstract class ProjectsList extends Component<HTMLElement, HTMLDivElement> {
     }[this.kind];
     this.ul.id = `${this.kind}-projects-list`;
 
-    this.ul.addEventListener("dragover", this.dragoverHandler);
-    this.ul.addEventListener("drop", this.dropHandler);
-  }
-
-  @AutoBind
-  protected dragoverHandler(event: DragEvent) {
-    event.preventDefault();
-  }
-
-  @AutoBind
-  protected dropHandler(event: DragEvent) {
-    event.preventDefault();
-
-    const currentTarget = event.currentTarget! as HTMLDivElement;
-    const draggedItemId = event.dataTransfer!.getData(DRAG_FORMAT_STR);
-    const draggedItem = document.getElementById(draggedItemId)!;
-
-    if (!currentTarget.contains(draggedItem)) {
-      draggedItem.parentNode!.removeChild(draggedItem);
-      this.ul.appendChild(draggedItem);
-
-      projectsState.updateProject(draggedItemId, { status: this.kind });
-    }
+    this.ul.addEventListener("dragover", this.ondragover);
+    this.ul.addEventListener("drop", this.ondrop);
   }
 }
 
@@ -334,9 +334,9 @@ class ActiveProjectsList extends ProjectsList {
     this.render();
   }
 
-  initialize() {
+  protected initialize() {
     super.initialize();
-    projectsState.addListener((projects: Project[]) => {
+    projectsState.observe((projects: Project[]) => {
       this.ul.replaceChildren();
 
       projects
@@ -360,14 +360,22 @@ class FinishedProjectsList extends ProjectsList {
   }
 }
 
-// Draggable
-class ProjectsListItem extends Component<HTMLLIElement, HTMLUListElement> {
+class ProjectsListItem
+  extends Component<HTMLLIElement, HTMLUListElement>
+  implements Draggable
+{
   readonly data: Project;
 
   constructor(project: Project) {
     super("single-project", activeProjectsList.ul.id);
     this.data = project;
     this.initialize();
+  }
+
+  @AutoBind
+  ondragstart(event: DragEvent) {
+    event.dataTransfer!.effectAllowed = "move";
+    event.dataTransfer!.setData(PLAIN_TEXT, this.data.id);
   }
 
   private initialize() {
@@ -382,13 +390,7 @@ class ProjectsListItem extends Component<HTMLLIElement, HTMLUListElement> {
     this.instance.id = id;
     this.instance.draggable = true;
     this.instance.innerHTML = contentDomString;
-    this.instance.addEventListener("dragstart", this.dragstartHandler);
-  }
-
-  @AutoBind
-  protected dragstartHandler(event: DragEvent) {
-    event.dataTransfer!.effectAllowed = "move";
-    event.dataTransfer!.setData(DRAG_FORMAT_STR, this.data.id);
+    this.instance.addEventListener("dragstart", this.ondragstart);
   }
 
   private formatManday(manday: number): string {
@@ -396,6 +398,6 @@ class ProjectsListItem extends Component<HTMLLIElement, HTMLUListElement> {
   }
 }
 
-const productForm = new ProductForm("project-input", "root", "user-input");
+const productForm = new ProjectForm("project-input", "root", "user-input");
 const activeProjectsList = new ActiveProjectsList();
 const finishedProjectsList = new FinishedProjectsList();
