@@ -381,15 +381,16 @@ class ProjectsListItem
   private initialize() {
     const { id, title, description, manday } = this.data;
 
-    const contentDomString = `
-      <h2>${title}</h2>
-      <h3>${this.formatManday(+manday)}</h3>
-      <p>${description}<p>
-    `;
+    const h2 = this.instance.querySelector("h2")! as HTMLHeadingElement;
+    const h3 = this.instance.querySelector("h3")! as HTMLHeadingElement;
+    const p = this.instance.querySelector("p")! as HTMLParagraphElement;
+
+    h2.textContent = title;
+    h3.textContent = this.formatManday(+manday);
+    p.textContent = description;
 
     this.instance.id = id;
     this.instance.draggable = true;
-    this.instance.innerHTML = contentDomString;
     this.instance.addEventListener("dragstart", this.ondragstart);
   }
 
