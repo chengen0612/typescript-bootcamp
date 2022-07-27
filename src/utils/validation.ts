@@ -10,7 +10,7 @@ type RuleValidatorMap = {
 };
 
 /** @desc Define the rules to be applied to specific object. */
-interface DataSchema {
+export interface DataSchema {
   [propertyKey: string]: Rule[];
 }
 
@@ -52,9 +52,9 @@ const ruleValidatorMap: RuleValidatorMap = {
 };
 
 /** @desc Map through validators to check if the input object is valid. */
-export function validate(project: PlainObject) {
-  Object.entries(project).forEach(([propertyKey, value]) => {
-    const propertyRules = projectSchema[propertyKey];
+export function validate(obj: PlainObject, schema: DataSchema) {
+  Object.entries(obj).forEach(([propertyKey, value]) => {
+    const propertyRules = schema[propertyKey];
 
     if (propertyRules) {
       propertyRules.forEach((rule) => {
@@ -65,5 +65,3 @@ export function validate(project: PlainObject) {
     }
   });
 }
-
-export const projectSchema: DataSchema = {};

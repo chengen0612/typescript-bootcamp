@@ -30,7 +30,7 @@ export class ProjectForm extends Component<HTMLFormElement, HTMLDivElement> {
 
   @Writable(false)
   inspect(p: Project) {
-    validate({ ...p });
+    validate({ ...p }, p.schema);
   }
 
   @Writable(false)

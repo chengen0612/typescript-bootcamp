@@ -1,5 +1,4 @@
-import { ApplyRule } from "../decorators/ApplyRule.js";
-import { Rule } from "../utils/validation.js";
+import { Rule, DataSchema } from "../utils/validation.js";
 
 export enum Status {
   Active = "active",
@@ -9,22 +8,23 @@ export enum Status {
 export type ProjectsListKind = `${Status}`;
 type ProjectStatus = `${Status}`;
 
+const schema: DataSchema = {
+  title: [Rule.String],
+  description: [Rule.String],
+  manday: [Rule.Positive],
+};
+
 export class Project {
   readonly id: string;
-
-  @ApplyRule(Rule.String)
+  readonly schema: DataSchema;
   title: string;
-
-  @ApplyRule(Rule.String)
   description: string;
-
-  @ApplyRule(Rule.Positive)
   manday: number;
-
   status: ProjectStatus;
 
   constructor(title: string, description: string, manday: string) {
     this.id = Math.floor(Math.random() * 100).toString();
+    this.schema = schema;
     this.title = title;
     this.description = description;
     this.manday = +manday;
