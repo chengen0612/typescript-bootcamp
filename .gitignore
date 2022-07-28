@@ -3,10 +3,10 @@ node_modules
 
 # Development
 # Ignore results of the compilation
-*.js
-*.js.map
+dist/**/*.js
+dist/**/*.js.map
 
-# Environment
+# IDE
 .vscode
 
 # Storage
