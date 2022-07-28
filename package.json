@@ -4,7 +4,7 @@
   "main": "main.js",
   "license": "MIT",
   "scripts": {
-    "start": "lite-server",
+    "start": "webpack serve --open",
     "build": "webpack"
   },
   "devDependencies": {
