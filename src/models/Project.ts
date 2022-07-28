@@ -1,4 +1,4 @@
-import { Rule, DataSchema } from "../utils/validation.js";
+import { Rule, DataSchema } from "../utils/validation";
 
 export enum Status {
   Active = "active",

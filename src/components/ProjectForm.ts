@@ -1,9 +1,9 @@
-import { Component } from "./Component.js";
-import { Project } from "../models/Project.js";
-import { Writable } from "../decorators/Writable.js";
-import { AutoBind } from "../decorators/AutoBind.js";
-import { validate } from "../utils/validation.js";
-import { projectsState } from "../states/ProjectsState.js";
+import { Component } from "./Component";
+import { Project } from "../models/Project";
+import { Writable } from "../decorators/Writable";
+import { AutoBind } from "../decorators/AutoBind";
+import { validate } from "../utils/validation";
+import { projectsState } from "../states/ProjectsState";
 
 export class ProjectForm extends Component<HTMLFormElement, HTMLDivElement> {
   private instanceId: string;

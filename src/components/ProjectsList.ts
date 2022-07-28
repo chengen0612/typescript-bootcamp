@@ -1,11 +1,11 @@
-import { Component } from "./Component.js";
-import { Droppable } from "../models/Drag.js";
-import { Status, ProjectsListKind, Project } from "../models/Project.js";
-import { ProjectsListItem } from "./ProjectsListItem.js";
-import { AutoBind } from "../decorators/AutoBind.js";
-import { projectsState } from "../states/ProjectsState.js";
+import { Component } from "./Component";
+import { Droppable } from "../models/Drag";
+import { Status, ProjectsListKind, Project } from "../models/Project";
+import { ProjectsListItem } from "./ProjectsListItem";
+import { AutoBind } from "../decorators/AutoBind";
+import { projectsState } from "../states/ProjectsState";
 
-import { PLAIN_TEXT } from "../constants/drag.js";
+import { PLAIN_TEXT } from "../constants/drag";
 
 abstract class ProjectsList
   extends Component<HTMLElement, HTMLDivElement>
